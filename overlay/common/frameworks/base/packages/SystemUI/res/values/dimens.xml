@@ -18,6 +18,9 @@
 <resources>
     <dimen name="rounded_corner_content_padding">8dp</dimen>
 
+    <!-- Remove power menu shadow -->
+    <dimen name="global_actions_translate">0dp</dimen>
+
     <!-- The default height of the status bar used in {@link SystemBarUtils#getStatusBarHeight} to
          calculate the status bar height. -->
     <dimen name="status_bar_height_default">28dp</dimen>

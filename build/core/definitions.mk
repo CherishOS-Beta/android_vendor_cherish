@@ -4,3 +4,6 @@ endef
 
 # Include board/platform macros
 include vendor/cherish/build/core/utils.mk
+
+# Include vendor platform definitions
+include vendor/cherish/build/core/vendor/*.mk

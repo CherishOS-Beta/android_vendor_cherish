@@ -72,7 +72,7 @@ def fetch_query_via_ssh(remote_url, query):
     elif remote_url.count(':') == 1:
         (uri, userhost) = remote_url.split(':')
         userhost = userhost[2:]
-        port = 29418
+        port = 29419
     else:
         raise Exception('Malformed URI: Expecting ssh://[user@]host[:port]')
 
@@ -160,7 +160,7 @@ def get_private_gerrit_url():
 
 if __name__ == '__main__':
     # Default to PixelExperience Gerrit
-    default_gerrit = 'https://gerrit.pixelexperience.org'
+    default_gerrit = 'https://gerrit-staging.pixelexperience.org'
 
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=textwrap.dedent('''\
         repopick.py is a utility to simplify the process of cherry picking
@@ -369,7 +369,7 @@ if __name__ == '__main__':
     for item in mergables:
         args.quiet or print('Applying change number {0}...'.format(item['id']))
         # Check if change is open and exit if it's not, unless -f is specified
-        if (item['status'] != 'OPEN' and item['status'] != 'NEW' and item['status'] != 'DRAFT') and not args.query:
+        if (item['status'] != 'OPEN' and item['status'] != 'NEW' and item['status'] != 'DRAFT'):
             if args.force:
                 print('!! Force-picking a closed change !!\n')
             else:
@@ -403,7 +403,8 @@ if __name__ == '__main__':
 
         # Determine the maximum commits to check already picked changes
         check_picked_count = args.check_picked
-        branch_commits_count = int(subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], cwd=project_path))
+        max_count = '--max-count={0}'.format(check_picked_count + 1)
+        branch_commits_count = int(subprocess.check_output(['git', 'rev-list', '--count', max_count, 'HEAD'], cwd=project_path))
         if branch_commits_count <= check_picked_count:
             check_picked_count = branch_commits_count - 1
 

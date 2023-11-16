@@ -1,5 +1,5 @@
 # Copyright (C) 2018-2023 The LineageOS Project
-#           (C) 2018-2020 The PixelExperience Project
+#           (C) 2018-2023 The PixelExperience Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 #   TARGET_KERNEL_CLANG_COMPILE        = Compile kernel with clang, defaults to true
 #   TARGET_KERNEL_CLANG_VERSION        = Clang prebuilts version, optional, defaults to clang-stable
 #   TARGET_KERNEL_CLANG_PATH           = Clang prebuilts path, optional
-#   TARGET_KERNEL_CLANG_AOSP           = Set true if compiling kernel with AOSP clang, defaults to true
 #
 #   TARGET_KERNEL_LLVM_BINUTILS        = Use LLVM binutils, defaults to true
 #   TARGET_KERNEL_NO_GCC               = Fully compile the kernel without GCC.
@@ -76,8 +75,6 @@ KERNEL_VERSION := $(shell grep -s "^VERSION = " $(TARGET_KERNEL_SOURCE)/Makefile
 KERNEL_PATCHLEVEL := $(shell grep -s "^PATCHLEVEL = " $(TARGET_KERNEL_SOURCE)/Makefile | awk '{ print $$3 }')
 TARGET_KERNEL_VERSION ?= $(shell echo $(KERNEL_VERSION)"."$(KERNEL_PATCHLEVEL))
 
-TARGET_KERNEL_CLANG_AOSP ?= true
-
 # 5.10+ can fully compile without GCC by default
 ifneq ($(KERNEL_VERSION),)
     ifeq ($(shell expr $(KERNEL_VERSION) \>= 5), 1)
@@ -96,7 +93,6 @@ ifneq ($(TARGET_KERNEL_CLANG_VERSION),)
 else
     # Use the default version of clang if TARGET_KERNEL_CLANG_VERSION hasn't been set by the device config
     KERNEL_CLANG_VERSION := clang-r487747c
-    TARGET_KERNEL_CLANG_AOSP := true
 endif
 TARGET_KERNEL_CLANG_PATH ?= $(BUILD_TOP)/prebuilts/clang/host/$(HOST_PREBUILT_TAG)/$(KERNEL_CLANG_VERSION)
 
@@ -147,30 +143,30 @@ ifneq ($(KERNEL_NO_GCC), true)
     KERNEL_TOOLCHAIN_PATH_gcc := $(KERNEL_TOOLCHAIN_$(KERNEL_ARCH))
 
     ifneq ($(TARGET_KERNEL_CLANG_COMPILE),false)
-        KERNEL_CROSS_COMPILE := CROSS_COMPILE='$(KERNEL_TOOLCHAIN_PATH)'
+        KERNEL_CROSS_COMPILE := CROSS_COMPILE="$(KERNEL_TOOLCHAIN_PATH)"
     else
-        KERNEL_CROSS_COMPILE := CROSS_COMPILE='$(CCACHE_BIN) $(KERNEL_TOOLCHAIN_PATH)'
+        KERNEL_CROSS_COMPILE := CROSS_COMPILE="$(CCACHE_BIN) $(KERNEL_TOOLCHAIN_PATH)"
     endif
 
     # Needed for CONFIG_COMPAT_VDSO, safe to set for all arm64 builds
     ifeq ($(KERNEL_ARCH),arm64)
-        KERNEL_CROSS_COMPILE += CROSS_COMPILE_ARM32='$(KERNEL_TOOLCHAIN_arm)/$(KERNEL_TOOLCHAIN_PREFIX_arm)'
-        KERNEL_CROSS_COMPILE += CROSS_COMPILE_COMPAT='$(KERNEL_TOOLCHAIN_arm)/$(KERNEL_TOOLCHAIN_PREFIX_arm)'
+        KERNEL_CROSS_COMPILE += CROSS_COMPILE_ARM32="$(KERNEL_TOOLCHAIN_arm)/$(KERNEL_TOOLCHAIN_PREFIX_arm)"
+        KERNEL_CROSS_COMPILE += CROSS_COMPILE_COMPAT="$(KERNEL_TOOLCHAIN_arm)/$(KERNEL_TOOLCHAIN_PREFIX_arm)"
     endif
 
     ifeq ($(TARGET_KERNEL_CLANG_COMPILE),false)
         ifeq ($(KERNEL_ARCH),arm)
             # Avoid "Unknown symbol _GLOBAL_OFFSET_TABLE_" errors
-            KERNEL_MAKE_FLAGS += CFLAGS_MODULE='-fno-pic'
+            KERNEL_MAKE_FLAGS += CFLAGS_MODULE="-fno-pic"
         endif
 
         ifeq ($(KERNEL_ARCH),arm64)
             # Avoid "unsupported RELA relocation: 311" errors (R_AARCH64_ADR_GOT_PAGE)
-            KERNEL_MAKE_FLAGS += CFLAGS_MODULE='-fno-pic'
+            KERNEL_MAKE_FLAGS += CFLAGS_MODULE="-fno-pic"
         endif
     endif
 
-    KERNEL_MAKE_FLAGS += CPATH='/usr/include:/usr/include/x86_64-linux-gnu' HOSTLDFLAGS='-L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -fuse-ld=lld'
+    KERNEL_MAKE_FLAGS += HOSTCFLAGS="-I/usr/include -I/usr/include/x86_64-linux-gnu" HOSTLDFLAGS="-L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -fuse-ld=lld"
 
     ifeq ($(KERNEL_ARCH),arm64)
         # Add 32-bit GCC to PATH so that arm-linux-androidkernel-as is available for CONFIG_COMPAT_VDSO
@@ -184,19 +180,13 @@ ifneq ($(KERNEL_NO_GCC), true)
     KERNEL_MAKE_FLAGS += HOSTCXX=$(TARGET_KERNEL_CLANG_PATH)/bin/clang++
     ifneq ($(TARGET_KERNEL_CLANG_COMPILE), false)
         ifneq ($(TARGET_KERNEL_LLVM_BINUTILS), false)
-            ifeq ($(KERNEL_TOOLCHAIN),)
             KERNEL_MAKE_FLAGS += LD=$(TARGET_KERNEL_CLANG_PATH)/bin/ld.lld
             KERNEL_MAKE_FLAGS += AR=$(TARGET_KERNEL_CLANG_PATH)/bin/llvm-ar
-            endif # KERNEL_TOOLCHAIN
         endif
     endif
 else
-    ifeq ($(TARGET_KERNEL_CLANG_AOSP), true)
-        KERNEL_MAKE_FLAGS += HOSTCFLAGS='--sysroot=$(BUILD_TOP)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot -I$(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/include'
-        KERNEL_MAKE_FLAGS += HOSTLDFLAGS='--sysroot=$(BUILD_TOP)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot -Wl,-rpath,$(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/lib64 -L $(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/lib64 -fuse-ld=lld --rtlib=compiler-rt'
-    else
-        KERNEL_MAKE_FLAGS += HOSTLDFLAGS='-fuse-ld=lld'
-    endif
+    KERNEL_MAKE_FLAGS += HOSTCFLAGS="--sysroot=$(BUILD_TOP)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot -I$(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/include"
+    KERNEL_MAKE_FLAGS += HOSTLDFLAGS="--sysroot=$(BUILD_TOP)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot -Wl,-rpath,$(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/lib64 -L $(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/lib64 -fuse-ld=lld --rtlib=compiler-rt"
 
     TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-cherish/$(HOST_PREBUILT_TAG)/bin:$(TARGET_KERNEL_CLANG_PATH)/bin:$$PATH
 endif

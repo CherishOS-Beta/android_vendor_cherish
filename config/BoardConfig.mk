@@ -1,7 +1,7 @@
 include vendor/cherish/config/BoardConfigKernel.mk
 
 ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
-include hardware/qcom-caf/common/BoardConfigQcom.mk
+include vendor/cherish/config/BoardConfigQcom.mk
 endif
 
 # Custom AVB Key
